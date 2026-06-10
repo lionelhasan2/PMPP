@@ -22,35 +22,61 @@ void foo(int* a_d, int* b_d) {
 }
 ```
 
-a. What is the number of warps per block?
+**a. What is the number of warps per block?**
 
-b. What is the number of warps in the grid?
+There are 128 threads per block and 32 threads per warp, so there are 128/32 = 4 warps per block.
 
-c. For the statement on line 04:
+**b. What is the number of warps in the grid?**
 
-i. How many warps in the grid are active?
+There are 8 thread blocks with 4 warps per block, therefore there is 32 total warps within the grid.
 
-ii. How many warps in the grid are divergent?
+**c. For the statement on line 04:**
 
-iii. What is the SIMD efficiency (in %) of warp 0 of block 0?
+**i. How many warps in the grid are active?**
 
-iv. What is the SIMD efficiency (in %) of warp 1 of block 0?
+There are three warps that have their thread indices span over the range 0 - 40 and 104 - 128. Since there are 8 blocks, 24 warps within the grid are active.
 
-v. What is the SIMD efficiency (in %) of warp 3 of block 0?
+**ii. How many warps in the grid are divergent?**
 
-d. For the statement on line 07:
+Two warps within each block are divergent as the entirety of their warp does not fit within the range 0 - 40 and 104 - 128 , the second warp with thread indices 32-63 and the fourth warp with indices 96-128 have divergent behaviour on line 04. All of warp 1 completes line 04 while all of warp 2 skips line 04. Because the grid has 8 blocks, 16 warps within the grid are divergent. 
 
-i. How many warps in the grid are active?
 
-ii. How many warps in the grid are divergent?
+**iii. What is the SIMD efficiency (in %) of warp 0 of block 0?**
 
-iii. What is the SIMD efficiency (in %) of warp 0 of block 0?
+100% because there is no control divergence within warp 0. 
 
-e. For the loop on line 09:
+**iv. What is the SIMD efficiency (in %) of warp 1 of block 0?**
 
-i. How many iterations have no divergence?
+8/32  = 25% because only the  first 8 threads in the warp complete line 04. 
 
-ii. How many iterations have divergence?
+
+**v. What is the SIMD efficiency (in %) of warp 3 of block 0?**
+
+24/32 = 75% because only the first 8 threads in the warp do not complete line 04 while the other 24 do. 
+
+**d. For the statement on line 07:**
+
+**i. How many warps in the grid are active?**
+
+All 32 warps within the grid are active as the condition causes every second thread to reach line 07.
+
+**ii. How many warps in the grid are divergent?**
+
+All 32 warps are divergent. 
+
+**iii. What is the SIMD efficiency (in %) of warp 0 of block 0?**
+
+There is a 50% efficiency because only half of the threads in the warp will complete the instruction.
+
+**e. For the loop on line 09:**
+
+**i. How many iterations have no divergence?**
+
+The first three iterations of the loop will be completed by each thread.
+
+**ii. How many iterations have divergence**
+
+The last two iterations of the loop may not be completed by each thread, therefore there may be divergence. 
 
 ## Exercise 2
 
