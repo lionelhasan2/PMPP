@@ -38,7 +38,7 @@ There are three warps that have their thread indices span over the range 0 - 40 
 
 **ii. How many warps in the grid are divergent?**
 
-Two warps within each block are divergent as the entirety of their warp does not fit within the range 0 - 40 and 104 - 128 , the second warp with thread indices 32-63 and the fourth warp with indices 96-128 have divergent behaviour on line 04. All of warp 1 completes line 04 while all of warp 2 skips line 04. Because the grid has 8 blocks, 16 warps within the grid are divergent. 
+Two warps within each block are divergent as the entirety of their warp does not fit within the range 0 - 40 and 104 - 128 , the second warp with thread indices 32-63 and the fourth warp with indices 96-128 have divergent behaviour on line 04. All of warp 0 completes line 04 while all of warp 2 skips line 04. Because the grid has 8 blocks, 16 warps within the grid are divergent. 
 
 
 **iii. What is the SIMD efficiency (in %) of warp 0 of block 0?**
@@ -80,24 +80,34 @@ The last two iterations of the loop may not be completed by each thread, therefo
 
 ## Exercise 2
 
-For a vector addition, assume that the vector length is 2000, each thread calculates one output element, and the thread block size is 512 threads. How many threads will be in the grid?
+**For a vector addition, assume that the vector length is 2000, each thread calculates one output element, and the thread block size is 512 threads. How many threads will be in the grid?**
+
+The number of blocks will be (2000 + 512 - 1) / 512 = 4. Therefore there will be 4 * 512 = 2048 threads inside the grid. 
 
 ## Exercise 3
 
-For the previous question, how many warps do you expect to have divergence due to the boundary check on vector length?
+**For the previous question, how many warps do you expect to have divergence due to the boundary check on vector length?**
+
+I expect 1 warp to be divergent because only part of the second last warp will have threads that complete the instruction while the rest of the threads in the warp will not. 
+
 
 ## Exercise 4
 
-Consider a hypothetical block with 8 threads executing a section of code before reaching a barrier. The threads require the following amount of time in microseconds to execute the sections: 2.0, 2.3, 3.0, 2.8, 2.4, 1.9, 2.6, and 2.9; they spend the rest of their time waiting for the barrier. What percentage of the threads' total execution time is spent waiting for the barrier?
+**Consider a hypothetical block with 8 threads executing a section of code before reaching a barrier. The threads require the following amount of time in microseconds to execute the sections: 2.0, 2.3, 3.0, 2.8, 2.4, 1.9, 2.6, and 2.9; they spend the rest of their time waiting for the barrier. What percentage of the threads' total execution time is spent waiting for the barrier?**
+
+The average time to complete the section is 2.4875s, each thread will have to wait for the barrier if it completes before 3s. Therefore, the percentage spent waiting is (3-2.4875) / 3 
+which is 17%. 
 
 ## Exercise 5
 
-A CUDA programmer says that if they launch a kernel with only 32 threads in each block, they can leave out the `__syncthreads()` instruction wherever barrier synchronization is needed. Do you think this is a good idea? Explain.
+**A CUDA programmer says that if they launch a kernel with only 32 threads in each block, they can leave out the `__syncthreads()` instruction wherever barrier synchronization is needed. Do you think this is a good idea? Explain.**
 
+No, timing synchronization within a warp cannot be relied upon and the __syncthreads() instruction should be used. 
 ## Exercise 6
 
-If a CUDA device's SM can take up to 1536 threads and up to 4 thread blocks, which of the following block configurations would result in the most number of threads in the SM?
+**If a CUDA device's SM can take up to 1536 threads and up to 4 thread blocks, which of the following block configurations would result in the most number of threads in the SM?**
 
+**
 a. 128 threads per block
 
 b. 256 threads per block
@@ -105,10 +115,13 @@ b. 256 threads per block
 c. 512 threads per block
 
 d. 1024 threads per block
+**
+
+C. All 1536 threads available would be used with 3 different thread blocks. 
 
 ## Exercise 7
 
-Assume a device that allows up to 64 blocks per SM and 2048 threads per SM. Indicate which of the following assignments per SM are possible. In the cases in which it is possible, indicate the occupancy level.
+**Assume a device that allows up to 64 blocks per SM and 2048 threads per SM. Indicate which of the following assignments per SM are possible. In the cases in which it is possible, indicate the occupancy level.**
 
 a. 8 blocks with 128 threads each
 
@@ -120,16 +133,39 @@ d. 64 blocks with 32 threads each
 
 e. 32 blocks with 64 threads each
 
+
+A) 8 * 128 = 1024 threads, 1024/2048 = 50% occupancy level 
+
+B) 16 * 64 = 1024 threads, 1024/2048 = 50% occupancy level 
+
+C) 32 * 32 = 1024 threads, 1024/2048 = 50% occupancy level 
+
+D) 64 * 32 = 2048 threads, 2048/2048 = 100% occupancy level  
+
+E) 32 * 64 = 2048 threads, 2048/2048 = 100% occupancy level  
+
+All of the threads are possible. 
+
 ## Exercise 8
 
-Consider a GPU with the following hardware limits: 2048 threads per SM, 32 blocks per SM, and 64K (65,536) registers per SM. For each of the following kernel characteristics, specify whether the kernel can achieve full occupancy. If not, specify the limiting factor.
+**Consider a GPU with the following hardware limits: 2048 threads per SM, 32 blocks per SM, and 64K (65,536) registers per SM. For each of the following kernel characteristics, specify whether the kernel can achieve full occupancy. If not, specify the limiting factor.**
 
-a. The kernel uses 128 threads per block and 30 registers per thread.
+*a. The kernel uses 128 threads per block and 30 registers per thread.*
 
-b. The kernel uses 32 threads per block and 29 registers per thread.
+Number of blocks used is 2048 / 128 = 16 which is feasible, number of registers used is 128 * 16 * 30 = 61440 which underutilizes some registers but full occupancy can still be achieved.
 
-c. The kernel uses 256 threads per block and 34 registers per thread.
+*b. The kernel uses 32 threads per block and 29 registers per thread.*
+
+Number of blocks used is 2048 / 32 = 64, this is not a feasible amount as there can only be 32 blocks in the SM. The limiting factor is the number of threads per block as using only 32 blocks in the SM will cause half of the threads to go unused. 
+
+*c. The kernel uses 256 threads per block and 34 registers per thread.*
+
+Number of blocks used is 2048/256 = 8. The number of registers used is 256 * 8 * 34 = 69632, which is over the total amount of registers meaning this design is unfeasible. 
+
 
 ## Exercise 9
 
-A student mentions that they were able to multiply two 1024 x 1024 matrices using a matrix multiplication kernel with 32 x 32 thread blocks. The student is using a CUDA device that allows up to 512 threads per block and up to 8 blocks per SM. The student further mentions that each thread in a thread block calculates one element of the result matrix. What would be your reaction and why?
+**A student mentions that they were able to multiply two 1024 x 1024 matrices using a matrix multiplication kernel with 32 x 32 thread blocks. The student is using a CUDA device that allows up to 512 threads per block and up to 8 blocks per SM. The student further mentions that each thread in a thread block calculates one element of the result matrix. What would be your reaction and why?**
+
+The 32 x 32 thread block contains 1024 threads per block, which exceeds the maximum of 512 threads per block allowed the device. Therefore, the configuration is not feasible. 
+
