@@ -5,7 +5,51 @@
 Write a matrix multiplication kernel function that corresponds to the design illustrated in Fig. 6.4.
 
 ```cuda
+__global__ void TiledMatMulKernel(float* M, float* N, float* P, int m, int n, int o) {
+    // Shared memory tiles
+    __shared__ float Mds[TILE_WIDTH][TILE_WIDTH];
+    __shared__ float Nds[TILE_WIDTH][TILE_WIDTH];
 
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+
+    // Output indices
+    int row = blockIdx.y * TILE_WIDTH + ty;
+    int col = blockIdx.x * TILE_WIDTH + tx;
+
+    float Pvalue = 0.0f;
+
+    // Loop over tiles
+    for (int ph = 0; ph < (n + TILE_WIDTH - 1) / TILE_WIDTH; ph++) {
+        
+        // Load M (Row-Major): Coalesced
+        if (row < m && (ph * TILE_WIDTH + tx) < n) {
+            Mds[ty][tx] = M[row * n + (ph * TILE_WIDTH + tx)];
+        } else {
+            Mds[ty][tx] = 0.0f;
+        }
+
+        // Load N (Column-Major): Coalesced
+        if (((ph * TILE_WIDTH) + ty) < n && col < o) {
+            Nds[ty][tx] = N[col * n + (ph * TILE_WIDTH) + ty];
+        } else {
+            Nds[ty][tx] = 0.0f;
+        }
+
+        __syncthreads();
+
+        // Compute
+        for (int k = 0; k < TILE_WIDTH; k++) {
+            Pvalue += Mds[ty][k] * Nds[k][tx];
+        }
+        __syncthreads();
+    }
+
+    // Write the result to global memory (P is Row-Major)
+    if (row < m && col < o) {
+        P[row * o + col] = Pvalue;
+    }
+}
 
 ```
 
