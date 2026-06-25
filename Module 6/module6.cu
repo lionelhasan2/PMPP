@@ -27,17 +27,16 @@ __global__ void TiledMatMulCornerTurning(
 
     for (int ph = 0; ph < (n + TILE_WIDTH - 1) / TILE_WIDTH; ph++)
     {
-        // ── A is row-major ──────────────────────────────────────────────
-        // Thread (ty, tx): loads A[row][ph*TILE_WIDTH + tx]
-        // Consecutive tx  → consecutive addresses → COALESCED ✓
         int aCol = ph * TILE_WIDTH + tx;
         As[ty][tx] = (row < m && aCol < n) ? A[row * n + aCol] : 0.0f;
+
+        // B is column-major: corner turning 
 
         int bRow = ph  * TILE_WIDTH + tx;   // row index into B  (driven by tx → coalesced)
         int bCol = bx  * TILE_WIDTH + ty;   // col index into B  (driven by ty → same col group)
         Bs[tx][ty] = (bRow < n && bCol < o) ? B[bCol * n + bRow] : 0.0f;
-
-
+        //  ^^^ transposed store: element that belongs at logical [k][tx]
+        //      is written to Bs[tx][ty] and read back as Bs[k][tx] below
         __syncthreads();
 
         for (int k = 0; k < TILE_WIDTH; k++)
