@@ -6,54 +6,48 @@
 #include <iostream>
 #include <cuda_runtime.h>
 
-// Tiled Matrix Multiplication Kernel (M is Row-Major, N is Column-Major)
-__global__ void TiledMatMulKernel(float* M, float* N, float* P, int m, int n, int o) {
-    // Shared memory tiles
-    __shared__ float Mds[TILE_WIDTH][TILE_WIDTH];
-    __shared__ float Nds[TILE_WIDTH][TILE_WIDTH];
+#define TILE_WIDTH 16
 
-    int tx = threadIdx.x;
-    int ty = threadIdx.y;
+__global__ void TiledMatMulCornerTurning(
+    float *A,   // row-major,    shape [m x n]
+    float *B,   // col-major,    shape [n x o]  → stored as B[col * n + row]
+    float *C,   // row-major,    shape [m x o]
+    int m, int n, int o)
+{
+    __shared__ float As[TILE_WIDTH][TILE_WIDTH];
+    __shared__ float Bs[TILE_WIDTH][TILE_WIDTH];
 
-    // Output indices
-    int row = blockIdx.y * TILE_WIDTH + ty;
-    int col = blockIdx.x * TILE_WIDTH + tx;
+    int by = blockIdx.y,  bx = blockIdx.x;
+    int ty = threadIdx.y, tx = threadIdx.x;
 
-    float Pvalue = 0.0f;
+    int row = by * TILE_WIDTH + ty;   // output row in C
+    int col = bx * TILE_WIDTH + tx;   // output col in C
 
-    // Loop over tiles
-    for (int ph = 0; ph < (n + TILE_WIDTH - 1) / TILE_WIDTH; ph++) {
-        
-        // Load M (Row-Major): Coalesced
-        if (row < m && (ph * TILE_WIDTH + tx) < n) {
-            Mds[ty][tx] = M[row * n + (ph * TILE_WIDTH + tx)];
-        } else {
-            Mds[ty][tx] = 0.0f;
-        }
+    float sum = 0.0f;
 
-        // Load N (Column-Major): Coalesced
-        // FIXED: Changed () to [] and mapped correctly to column-major layout
-        if (((ph * TILE_WIDTH) + ty) < n && col < o) {
-            Nds[ty][tx] = N[col * n + (ph * TILE_WIDTH) + ty];
-        } else {
-            Nds[ty][tx] = 0.0f;
-        }
+    for (int ph = 0; ph < (n + TILE_WIDTH - 1) / TILE_WIDTH; ph++)
+    {
+        // ── A is row-major ──────────────────────────────────────────────
+        // Thread (ty, tx): loads A[row][ph*TILE_WIDTH + tx]
+        // Consecutive tx  → consecutive addresses → COALESCED ✓
+        int aCol = ph * TILE_WIDTH + tx;
+        As[ty][tx] = (row < m && aCol < n) ? A[row * n + aCol] : 0.0f;
+
+        int bRow = ph  * TILE_WIDTH + tx;   // row index into B  (driven by tx → coalesced)
+        int bCol = bx  * TILE_WIDTH + ty;   // col index into B  (driven by ty → same col group)
+        Bs[tx][ty] = (bRow < n && bCol < o) ? B[bCol * n + bRow] : 0.0f;
+
 
         __syncthreads();
 
-        // Compute
-        for (int k = 0; k < TILE_WIDTH; k++) {
-            // FIXED: Changed Nds[k][ty] to Nds[k][tx] to properly match the thread's column
-            Pvalue += Mds[ty][k] * Nds[k][tx];
-        }
+        for (int k = 0; k < TILE_WIDTH; k++)
+            sum += As[ty][k] * Bs[k][tx];
+
         __syncthreads();
     }
 
-    // Write the result to global memory (P is Row-Major)
-    if (row < m && col < o) {
-        // FIXED: Changed PValue to Pvalue
-        P[row * o + col] = Pvalue;
-    }
+    if (row < m && col < o)
+        C[row * o + col] = sum;
 }
 
 // CPU Matrix Multiplication for verification (M is Row-Major, N is Column-Major)
