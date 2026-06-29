@@ -1,118 +1,99 @@
-# Convolution & GPU Programming Workbook
+# Convolution Exercises
 
----
+## Exercise 1
 
-### Exercise 1
 Calculate the `P[0]` value in Fig. 7.3.
 
-**Answer:**
-<br><br><br>
-
+> The value would be P[0] = 0 * f[0] + 0 * f[1] + x[0] * f[2] + x[1] * f[3] + x[2] * f[4] = 0 + 0 + (8*5) + (2*3) + (5*1) = 51 
 
 ---
 
-### Exercise 2
-Consider performing a 1D convolution on array `N = {4,1,3,2,3}` with filter `F = {2,1,4}`. What is the resulting output array?
+## Exercise 2
 
-**Answer:**
-<br><br><br>
+Consider performing a 1D convolution on array `N = {4, 1, 3, 2, 3}` with filter `F = {2, 1, 4}`. What is the resulting output array?
+
+> P[0] = (0 * 2) + (4 * 1) + (4 * 1) = 8
+> P[1] = (4*2) + (1 * 1) + (3 * 4) = 21
+> P[2] = (1 * 2) + (3 * 1) + (2 * 4) = 13
+> P[3] = (3 * 2) + (2 * 1) + (3 * 4) = 20
+> P[4] = (2 * 2) + (3 * 1) + (0 * 4) = 7
+>
+> Therefore, the resulting array would be [8,21,13,20,7]
 
 ---
 
-### Exercise 3
+## Exercise 3
+
 What do you think the following 1D convolution filters are doing?
 
 **a.** `[0 1 0]`
-**Answer:**
-
-<br>
+> Not modifying the input at all, no weight is given to any element other than the one at the selected indice.
 
 **b.** `[0 0 1]`
-**Answer:**
-
-<br>
+> Shifting the values to the left because the value to the right of the selected indice gets taken.
 
 **c.** `[1 0 0]`
-**Answer:**
-
-<br>
+> Shifting the values to the right because the value to the left of the selected indice gets taken.
 
 **d.** `[-1/2 0 1/2]`
-**Answer:**
-
-<br>
+> ? 
 
 **e.** `[1/3 1/3 1/3]`
-**Answer:**
-
-<br><br>
+> Takes the average of the surrounding values including it's own for each selected indice.
 
 ---
 
-### Exercise 4
+## Exercise 4
+
 Consider performing a 1D convolution on an array of size `N` with a filter of size `M`:
 
 **a.** How many ghost cells are there in total?
-**Answer:**
-
-<br>
+> The number of ghost cells at each end would be the number of radius cells.
+> So, 2 * ((M - 1) / 2) = M - 1
 
 **b.** How many multiplications are performed if ghost cells are treated as multiplications (by 0)?
-**Answer:**
-
-<br>
+> Each cell completes M multiplications, so (N + M - 1) * M. 
 
 **c.** How many multiplications are performed if ghost cells are not treated as multiplications?
-**Answer:**
-
-<br><br>
+> The number of multiplications performed is (N * M)
 
 ---
 
-### Exercise 5
+## Exercise 5
+
 Consider performing a 2D convolution on a square matrix of size `N × N` with a square filter of size `M × M`:
 
 **a.** How many ghost cells are there in total?
-**Answer:**
-
-<br>
+> 
 
 **b.** How many multiplications are performed if ghost cells are treated as multiplications (by 0)?
-**Answer:**
-
-<br>
+> 
 
 **c.** How many multiplications are performed if ghost cells are not treated as multiplications?
-**Answer:**
-
-<br><br>
+> 
 
 ---
 
-### Exercise 6
+## Exercise 6
+
 Consider performing a 2D convolution on a rectangular matrix of size `N₁ × N₂` with a rectangular mask of size `M₁ × M₂`:
 
 **a.** How many ghost cells are there in total?
-**Answer:**
-
-<br>
+> 
 
 **b.** How many multiplications are performed if ghost cells are treated as multiplications (by 0)?
-**Answer:**
-
-<br>
+> 
 
 **c.** How many multiplications are performed if ghost cells are not treated as multiplications?
-**Answer:**
-
-<br><br>
+> 
 
 ---
 
-### Exercise 7
+## Exercise 7
+
 Consider performing a 2D tiled convolution with the kernel shown in Fig. 7.12 on an array of size `N × N` with a filter of size `M × M` using an output tile of size `T × T`:
 
-```c
+```cuda
 #define IN_TILE_DIM 32
 #define OUT_TILE_DIM ((IN_TILE_DIM) - 2*(FILTER_RADIUS))
 
@@ -124,11 +105,11 @@ __global__ void convolution_tiled_2D_const_mem_kernel(float *N, float *P,
     int row = blockIdx.y*OUT_TILE_DIM + threadIdx.y - FILTER_RADIUS;
     
     //loading input tile
-    __shared__ N_s[IN_TILE_DIM][IN_TILE_DIM];
+    __shared__ float N_s[IN_TILE_DIM][IN_TILE_DIM];
     if(row>=0 && row<height && col>=0 && col<width) {
         N_s[threadIdx.y][threadIdx.x] = N[row*width + col];
     } else {
-        N_s[threadIdx.y][threadIdx.x] = 0.0;
+        N_s[threadIdx.y][threadIdx.x] = 0.0f;
     }
     __syncthreads();
     
@@ -153,45 +134,37 @@ __global__ void convolution_tiled_2D_const_mem_kernel(float *N, float *P,
 ```
 
 **a.** How many thread blocks are needed?
-**Answer:**
-
-<br>
+> 
 
 **b.** How many threads are needed per block?
-**Answer:**
-
-<br>
+> 
 
 **c.** How much shared memory is needed per block?
-**Answer:**
-
-<br>
+> 
 
 **d.** Repeat the same questions if you were using the kernel in Fig. 7.15.
-**Answer:**
-
-<br><br>
+> 
 
 ---
 
-### Exercise 8
+## Exercise 8
+
 Revise the 2D kernel in Fig. 7.7 to perform 3D convolution.
 
-**Answer:**
-<br><br><br><br><br>
+> 
 
 ---
 
-### Exercise 9
+## Exercise 9
+
 Revise the 2D kernel in Fig. 7.9 to perform 3D convolution.
 
-**Answer:**
-<br><br><br><br><br>
+> 
 
 ---
 
-### Exercise 10
+## Exercise 10
+
 Revise the tiled 2D kernel in Fig. 7.12 to perform 3D convolution.
 
-**Answer:**
-<br><br><br><br><br>
+>
