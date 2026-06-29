@@ -52,10 +52,10 @@ Consider performing a 1D convolution on an array of size `N` with a filter of si
 > So, 2 * ((M - 1) / 2) = M - 1
 
 **b.** How many multiplications are performed if ghost cells are treated as multiplications (by 0)?
-> Each cell completes M multiplications, so (N + M - 1) * M. 
+> Each cell completes M multiplications, so (N  * M). 
 
 **c.** How many multiplications are performed if ghost cells are not treated as multiplications?
-> The number of multiplications performed is (N * M)
+> The number of multiplications performed gets tricky as the first element looses r multiplications while the second element loses r - 1 multiplications and so on until the rth element which loses 1 multiplication. The same happens at the end of the array. So, the total number of multiplications performed would be (N * M) - (2 * (r * (r + 1) / 2)) = (N * M) - r(r + 1)
 
 ---
 
@@ -64,37 +64,22 @@ Consider performing a 1D convolution on an array of size `N` with a filter of si
 Consider performing a 2D convolution on a square matrix of size `N × N` with a square filter of size `M × M`:
 
 **a.** How many ghost cells are there in total?
-> 
-
+>  The number of ghost cells would be the number of radius cells at each of the four directions 4 * N * r, combined with the fact that there are r * r ghost cells at each corner. Therefore there is (4 * N * r) + ( 4* r * r) = (4 * r) (N + r) 
+>   
 **b.** How many multiplications are performed if ghost cells are treated as multiplications (by 0)?
-> 
+> Each cell completes M*M multiplications therefore the number of multiplications performed is N * N * M * M. 
 
 **c.** How many multiplications are performed if ghost cells are not treated as multiplications?
 > 
 
 ---
 
-## Exercise 6
-
-Consider performing a 2D convolution on a rectangular matrix of size `N₁ × N₂` with a rectangular mask of size `M₁ × M₂`:
-
-**a.** How many ghost cells are there in total?
-> 
-
-**b.** How many multiplications are performed if ghost cells are treated as multiplications (by 0)?
-> 
-
-**c.** How many multiplications are performed if ghost cells are not treated as multiplications?
-> 
-
----
 
 ## Exercise 7
 
 Consider performing a 2D tiled convolution with the kernel shown in Fig. 7.12 on an array of size `N × N` with a filter of size `M × M` using an output tile of size `T × T`:
 
 ```cuda
-#define IN_TILE_DIM 32
 #define OUT_TILE_DIM ((IN_TILE_DIM) - 2*(FILTER_RADIUS))
 
 __constant__ float F_c[2*FILTER_RADIUS+1][2*FILTER_RADIUS+1];
@@ -134,17 +119,23 @@ __global__ void convolution_tiled_2D_const_mem_kernel(float *N, float *P,
 ```
 
 **a.** How many thread blocks are needed?
-> 
-
+> The size of each thread block is dictated by the dimensions of the input tile, but each thread block can only calculate the number of elements inside the output tile because input tiles contain halo cells meaning certain threads need to be turned off during the calculation stage. 
+>
+> Total Blocks Needed = (N * N) / ( T * T)
+>
 **b.** How many threads are needed per block?
-> 
+> The number of threads per block is again dictated by the dimensions of the input tile, in this case the dimensions of the input tile is ((T+2r) * (T*2r))where r is the radius of the filter or ((M-1) / 2). 
 
 **c.** How much shared memory is needed per block?
-> 
+> Shared memory must hold the entire input, so (T+2r) * (T + 2r) * 4B.
+
 
 **d.** Repeat the same questions if you were using the kernel in Fig. 7.15.
-> 
+> A) The number of output elements computed by a thread block is still dictated by the size of the output tile. Therefore, Total Blocks Needed = ( N * N) / (T *T)
 
+> B) The number of threads needed per block reduces to only (T * T) because the size is dictated by the size of the output tile 
+
+> C) Each input tile loads in a single element into shared memory while the halo cells have their values retrieved from constant caches, therefore the shared memory needed = T * T * 4B. 
 ---
 
 ## Exercise 8
