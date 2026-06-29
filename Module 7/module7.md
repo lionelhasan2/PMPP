@@ -36,7 +36,7 @@ What do you think the following 1D convolution filters are doing?
 > Shifting the values to the right because the value to the left of the selected indice gets taken.
 
 **d.** `[-1/2 0 1/2]`
-> ? 
+> It is an edge detection kernel, if there is significant change between neighbouring cells then the magnitude of the value will be large, if there is no change then the value will be small.  
 
 **e.** `[1/3 1/3 1/3]`
 > Takes the average of the surrounding values including it's own for each selected indice.
@@ -69,8 +69,6 @@ Consider performing a 2D convolution on a square matrix of size `N × N` with a 
 **b.** How many multiplications are performed if ghost cells are treated as multiplications (by 0)?
 > Each cell completes M*M multiplications therefore the number of multiplications performed is N * N * M * M. 
 
-**c.** How many multiplications are performed if ghost cells are not treated as multiplications?
-> 
 
 ---
 
@@ -124,7 +122,7 @@ __global__ void convolution_tiled_2D_const_mem_kernel(float *N, float *P,
 > Total Blocks Needed = (N * N) / ( T * T)
 >
 **b.** How many threads are needed per block?
-> The number of threads per block is again dictated by the dimensions of the input tile, in this case the dimensions of the input tile is ((T+2r) * (T*2r))where r is the radius of the filter or ((M-1) / 2). 
+> The number of threads per block is again dictated by the dimensions of the input tile, in this case the dimensions of the input tile is ((T+2r) * (T+2r))where r is the radius of the filter or ((M-1) / 2). 
 
 **c.** How much shared memory is needed per block?
 > Shared memory must hold the entire input, so (T+2r) * (T + 2r) * 4B.
